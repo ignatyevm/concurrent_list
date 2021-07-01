@@ -86,5 +86,12 @@ TEST(ListTest, IteratorReverseAdvance) {
     for (int v : values) {
         list.insert(list.end(), v);
     }
-
+    auto it1 = list.begin();
+    for (int i = 0; i < n - 1; i++) {
+        ++it1;
+    }
+    for (auto it2 = values.rbegin(); it2 != values.rend(); ++it2) {
+        EXPECT_EQ(*it1, *it2);
+        --it1;
+    }
 }
