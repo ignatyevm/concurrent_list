@@ -4,11 +4,17 @@
 
 #include "list_node.hpp"
 
+#include <iterator>
+
 template <typename List>
 class list_iterator {
 public:
     friend List;
+    using iterator_category = std::bidirectional_iterator_tag;
     using value_type = typename List::value_type;
+    using difference_type = size_t;
+    using pointer = value_type*;
+    using reference = value_type&;
     list_iterator() = default;
     list_iterator(const list_iterator& other) : node(other.node) {}
     list_iterator& operator=(const list_iterator& other) {
@@ -54,6 +60,7 @@ public:
     bool operator!=(const list_iterator& rhs) {
         return node != rhs.node;
     }
+    ~list_iterator() = default;
 private:
     list_iterator(node_pointer<List> other_node) {
         node = other_node;
