@@ -6,30 +6,10 @@
 #include <vector>
 #include <algorithm>
 
-std::vector<int> prepare_data_for_test(int n) {
-    std::vector<int> values;
-    values.reserve(n);
-    for (int i = 0; i < n; i++) {
-        values.push_back(random_int());
-    }
-    return values;
-}
-
-template <class C1, class C2>
-void check_content(const C1& c1, const C2& c2) {
-    auto it1 = c1.begin();
-    auto it2 = c2.begin();
-    while (it1 != c1.end()) {
-        EXPECT_EQ(*it1, *it2);
-        ++it1;
-        ++it2;
-    }
-}
-
 TEST(ListTest, PushBack) {
     int n = 100000;
     polyndrom::acid_list<int> list;
-    auto values = prepare_data_for_test(n);
+    auto values = random_int_vector(n);
     for (int v : values) {
         list.push_back(v);
     }
@@ -40,7 +20,7 @@ TEST(ListTest, PushBack) {
 TEST(ListTest, PushFront) {
     int n = 100000;
     polyndrom::acid_list<int> list;
-    auto values = prepare_data_for_test(n);
+    auto values = random_int_vector(n);
     for (int v : values) {
         list.push_front(v);
     }
@@ -50,46 +30,68 @@ TEST(ListTest, PushFront) {
 }
 
 TEST(ListTest, Insert) {
-    int n = 100000;
+    int n = 10000;
+    std::vector<int> values;
+    values.reserve(n);
     polyndrom::acid_list<int> list;
-    auto values = prepare_data_for_test(n);
-    for (int v : values) {
-        list.insert(list.end(), v);
+    list.push_back(1);
+    values.push_back(1);
+    for (int i = 0; i < n - 1; i++) {
+        int v = int_generator::random_int();
+        auto it1 = random_element(list);
+        auto it2 = std::next(values.begin(), std::distance(list.begin(), it1));
+        list.insert(it1, v);
+        values.insert(it2, v);
+        check_content(values, list);
     }
-    check_content(values, list);
     EXPECT_EQ(list.size(), n);
 }
 
 TEST(ListTest, Erase) {
-    int n = 100000;
+    int n = 10000;
+    int m = 10000;
     polyndrom::acid_list<int> list;
-    auto values = prepare_data_for_test(n);
+    auto values = random_int_vector(n);
     for (int v : values) {
         list.push_back(v);
     }
-    int k = 0;
-    for (auto it = list.begin(); it != list.end(); it++) {
-        auto next_it = list.erase(it);
-        if (next_it == list.end()) {
-            break;
+    for (int i = 0; i < m; i++) {
+        int k = int_generator::random_int(0, (int) values.size() - 1);
+        auto it1 = std::next(values.begin(), k);
+        auto it2 = std::next(list.begin(), k);
+        EXPECT_EQ(*it1, *it2);
+        it1 = values.erase(it1);
+        it2 = list.erase(it2);
+        if (it1 != values.end()) {
+            EXPECT_EQ(*it1, *it2);
         }
-        EXPECT_EQ(*next_it, values[k + 1]);
-        ++k;
+        check_content(values, list);
     }
-    EXPECT_EQ(list.size(), 0);
+    EXPECT_EQ(values.size(), list.size());
+}
+
+TEST(ListTest, IteratorDirectAdvance) {
+    int n = 100000;
+    polyndrom::acid_list<int> list;
+    auto values = random_int_vector(n);
+    for (int v : values) {
+        list.insert(list.end(), v);
+    }
+    auto it1 = list.begin();
+    for (auto it2 = values.begin(); it2 != values.end(); ++it2) {
+        EXPECT_EQ(*it1, *it2);
+        ++it1;
+    }
 }
 
 TEST(ListTest, IteratorReverseAdvance) {
     int n = 100000;
     polyndrom::acid_list<int> list;
-    auto values = prepare_data_for_test(n);
+    auto values = random_int_vector(n);
     for (int v : values) {
         list.insert(list.end(), v);
     }
-    auto it1 = list.begin();
-    for (int i = 0; i < n - 1; i++) {
-        ++it1;
-    }
+    auto it1 = std::next(list.begin(), n - 1);
     for (auto it2 = values.rbegin(); it2 != values.rend(); ++it2) {
         EXPECT_EQ(*it1, *it2);
         --it1;
