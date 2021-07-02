@@ -46,11 +46,14 @@ public:
     size_t size() const {
         return elements_count;
     }
-    ~acid_list() {
+    void clear() {
         auto it = begin();
         while (it != end()) {
             it = erase(it);
         }
+    }
+    ~acid_list() {
+        clear();
         first->next = nullptr;
         last->prev = nullptr;
     }
@@ -67,6 +70,7 @@ private:
     }
     void erase(node_ptr pos) {
         --elements_count;
+        pos->is_deleted = true;
         pos->next->prev = pos->prev;
         pos->prev->next = pos->next;
     }
