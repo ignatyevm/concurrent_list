@@ -35,8 +35,9 @@ public:
         if (*this == other) {
             return *this;
         }
+        node_type<List>* new_node = other.owned_node;
         release();
-        acquire(other.owned_node);
+        acquire(new_node);
         return *this;
     }
     node_pointer(std::nullptr_t) {}
