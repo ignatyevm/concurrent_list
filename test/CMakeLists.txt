@@ -1,14 +1,11 @@
-set(COMPILER_FLAGS -Wall -Werror -pedantic -fsanitize=address --coverage)
-set(LINKER_FLAGS -fsanitize=address --coverage)
+set(COMPILER_FLAGS -Wall -Werror -pedantic -fsanitize=address)
+set(LINKER_FLAGS -fsanitize=address)
 
-add_executable(default_list_test default_list_test.cpp)
-
-add_library(utils STATIC utils.cpp)
-
-target_link_libraries(default_list_test PRIVATE acid_list utils gtest_main)
-
-target_compile_options(default_list_test PRIVATE ${COMPILER_FLAGS})
-target_link_options(default_list_test PRIVATE ${LINKER_FLAGS})
-
-
-add_test(NAME default_list_test COMMAND default_list_test)
+set(tests default_list_test consistent_list_test)
+foreach(test IN LISTS tests)
+    add_executable(${test} "${test}.cpp")
+    target_link_libraries(${test} PRIVATE acid_list gtest_main)
+    target_compile_options(${test} PRIVATE ${COMPILER_FLAGS})
+    target_link_options(${test} PRIVATE ${LINKER_FLAGS})
+    add_test(NAME ${test} COMMAND ${test})
+endforeach()
