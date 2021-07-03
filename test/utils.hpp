@@ -30,6 +30,17 @@ inline std::vector<int> random_int_vector(int n) {
     return values;
 }
 
+inline std::vector<int> random_unique_int_vector(int n) {
+    std::vector<int> values;
+    values.reserve(n);
+    for (int i = 0; i < n; i++) {
+        values.push_back(i);
+    }
+    auto r = std::bind(int_generator::random_int, 0, std::placeholders::_1);
+    std::random_shuffle(values.begin(), values.end(), r);
+    return values;
+}
+
 template <class C1, class C2>
 inline void check_content(const C1& c1, const C2& c2) {
     auto it1 = c1.begin();
