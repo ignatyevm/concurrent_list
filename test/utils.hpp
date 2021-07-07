@@ -30,14 +30,15 @@ inline std::vector<int> random_int_vector(int n) {
     return values;
 }
 
-inline std::vector<int> random_unique_int_vector(int n) {
+inline std::vector<int> random_unique_int_vector(int n, int s = 0) {
     std::vector<int> values;
     values.reserve(n);
-    for (int i = 0; i < n; i++) {
+    for (int i = s; i < s + n; i++) {
         values.push_back(i);
     }
-    auto r = std::bind(int_generator::random_int, 0, std::placeholders::_1);
-    std::random_shuffle(values.begin(), values.end(), r);
+    std::random_shuffle(values.begin(), values.end(), [](int n) {
+        return int_generator::random_int(0, n - 1);
+    });
     return values;
 }
 
@@ -58,4 +59,22 @@ typename C::iterator random_element(C& c) {
     auto it = c.begin();
     std::advance(it, generator.next_value());
     return it;
+}
+
+template <class C>
+std::vector<typename C::iterator> random_iterators_vector(C& c, int n) {
+    std::vector<typename C::iterator> its;
+    its.reserve(n);
+    auto it = c.begin();
+    for (int i = 0; i < n; i++) {
+        int step = int_generator::random_int(0, 10);
+        for (int j = 0; j < step; j++) {
+            ++it;
+            if (it == c.end()) {
+                it = c.begin();
+            }
+        }
+        its.push_back(it);
+    }
+    return its;
 }
