@@ -1,5 +1,5 @@
-set(COMPILER_FLAGS -Wall -Werror -pedantic -fsanitize=address)
-set(LINKER_FLAGS -fsanitize=address)
+set(COMPILER_FLAGS -Wall -pedantic -fsanitize=address --coverage)
+set(LINKER_FLAGS -fsanitize=address --coverage)
 
 set(tests default_list_test consistent_list_test atomic_list_test)
 foreach(test IN LISTS tests)

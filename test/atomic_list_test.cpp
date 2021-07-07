@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 #include <thread>
+#include <atomic>
 
 using iterator = typename polyndrom::acid_list<int>::iterator;
 
@@ -150,7 +151,7 @@ TEST(AtomicListTest, ConcurrentPushFront) {
     polyndrom::acid_list<int> list;
     auto f = [](polyndrom::acid_list<int>& list, auto first_it, auto last_it) {
         for (auto it = first_it; it != last_it; ++it) {
-            list.push_back(*it);
+            list.push_front(*it);
         }
     };
     std::vector<std::thread> threads;
@@ -298,4 +299,112 @@ TEST(AtomicListTest, ConcurrentEraseRandom) {
         EXPECT_LT(v, 1000);
     }
     EXPECT_EQ(list.size(), 1000);
+}
+
+TEST(AtomicListTest, ConcurrentClear) {
+    int n = 100000;
+    std::vector<int> values = random_unique_int_vector(n);
+    polyndrom::acid_list<int> list;
+    for (int v : values) {
+        list.push_back(v);
+    }
+    auto f = [](polyndrom::acid_list<int>& list) {
+        list.clear();
+    };
+    std::thread t1(f, std::ref(list));
+    std::thread t2(f, std::ref(list));
+    std::thread t3(f, std::ref(list));
+    t1.join();
+    t2.join();
+    t3.join();
+    EXPECT_EQ(list.size(), 0);
+}
+
+TEST(AtomicListTest, ConcurrentInsertEraseFind) {
+    int n = 20000;
+    int m = 19500;
+    int insert_threads = 3;
+    int erase_threads = 3;
+    int find_threads = 2;
+    std::vector<int> values = random_unique_int_vector(n);
+    polyndrom::acid_list<int> list;
+    for (int v : values) {
+        list.push_back(v);
+    }
+    std::vector<int> items_for_find(n - m);
+    std::iota(items_for_find.begin(), items_for_find.end(), m);
+    std::vector<std::pair<iterator, int>> its_for_insert;
+    std::vector<iterator> its_for_erase;
+    its_for_insert.reserve(m);
+    its_for_erase.reserve(m);
+    int k = 0;
+    for (auto it = list.begin(); it != list.end(); ++it) {
+        if (*it < m) {
+            its_for_insert.emplace_back(it, n + k);
+            its_for_erase.push_back(it);
+            ++k;
+        }
+    }
+    std::random_shuffle(its_for_insert.begin(), its_for_insert.end(), [](int n) {
+        return int_generator::random_int(0, n - 1);
+    });
+    std::random_shuffle(its_for_erase.begin(), its_for_erase.end(), [](int n) {
+        return int_generator::random_int(0, n - 1);
+    });
+    auto find_func = [](polyndrom::acid_list<int>& list, auto first_it, auto last_it) {
+        for (auto it = first_it; it != last_it; ++it) {
+            EXPECT_TRUE(std::find(list.begin(), list.end(), *it) != list.end());
+        }
+    };
+    auto insert_func = [](polyndrom::acid_list<int>& list, auto first_it, auto last_it) {
+        for (auto it = first_it; it != last_it; ++it) {
+            list.insert(it->first, it->second);
+        }
+    };
+    auto erase_func = [](polyndrom::acid_list<int>& list, auto first_it, auto last_it) {
+        for (auto it = first_it; it != last_it; ++it) {
+            list.erase(*it);
+        }
+    };
+    std::vector<std::thread> threads;
+    threads.reserve(insert_threads + erase_threads + find_threads);
+    int p1 = m / insert_threads;
+    int p2 = m / erase_threads;
+    for (int i = 0; i < insert_threads; i++) {
+        if (i == insert_threads - 1) {
+            threads.emplace_back(std::thread(insert_func, std::ref(list),
+                                             its_for_insert.begin() + i * p1,
+                                             its_for_insert.end()));
+        } else {
+            threads.emplace_back(std::thread(insert_func, std::ref(list),
+                                             its_for_insert.begin() + i * p1,
+                                             its_for_insert.begin() + (i + 1) * p1));
+        }
+    }
+    for (int i = 0; i < erase_threads; i++) {
+        if (i == erase_threads - 1) {
+            threads.emplace_back(std::thread(erase_func, std::ref(list),
+                                             its_for_erase.begin() + i * p2,
+                                             its_for_erase.end()));
+        } else {
+            threads.emplace_back(std::thread(erase_func, std::ref(list),
+                                             its_for_erase.begin() + i * p2,
+                                             its_for_erase.begin() + (i + 1) * p2));
+        }
+    }
+    for (int i = 0; i < find_threads; i++) {
+        if (i < find_threads / 2) {
+            threads.emplace_back(std::thread(find_func, std::ref(list), items_for_find.begin(), items_for_find.end()));
+        } else {
+            threads.emplace_back(std::thread(find_func, std::ref(list), items_for_find.rbegin(), items_for_find.rend()));
+        }
+    }
+    for (auto& thread : threads) {
+        thread.join();
+    }
+    for (int v : list) {
+        EXPECT_LT(v,  n + m);
+        EXPECT_GE(v, m);
+    }
+    EXPECT_EQ(list.size(), n);
 }
