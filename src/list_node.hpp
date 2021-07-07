@@ -25,6 +25,8 @@ template <class List>
 class node_pointer {
 public:
     using list_type = const List;
+    using write_lock = typename List::write_lock;
+    using read_lock = typename List::read_lock;
     using value_type = typename List::value_type;
     node_pointer() = default;
     template <typename T>
@@ -63,6 +65,7 @@ public:
         return owned_node != rhs.owned_node;
     }
     ~node_pointer() {
+        std::unique_lock<std::recursive_mutex> lock(list->node_mutex);
         release();
     }
     void acquire(node_type<List>* node) {

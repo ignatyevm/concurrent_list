@@ -42,13 +42,11 @@ public:
         write_lock wlock(rw_mutex);
         node_ptr node = insert(pos.node, std::forward<U>(value));
         wlock.unlock();
-        read_lock rlock(rw_mutex);
-        iterator res(this, node);
-        rlock.unlock();
-        return res;
+        return iterator(this, node);
     }
     iterator erase(iterator pos) {
-        iterator next(this, pos.node->next);
+        iterator next(pos);
+        ++next;
         write_lock wlock(rw_mutex);
         erase(pos.node);
         wlock.unlock();
@@ -57,13 +55,11 @@ public:
     iterator begin() const {
         read_lock rlock(rw_mutex);
         node_ptr begin_node = first->next;
-        // rlock.unlock();
         return iterator(this, begin_node);
     }
     iterator end() const {
         read_lock rlock(rw_mutex);
         node_ptr last_node = last;
-        // rlock.unlock();
         return iterator(this, last_node);
     }
     size_t size() const {
@@ -96,6 +92,9 @@ private:
         return node;
     }
     void erase(node_ptr pos) {
+        if (pos->is_deleted) {
+            return;
+        }
         --elements_count;
         pos->is_deleted = true;
         pos->next->prev = pos->prev;
