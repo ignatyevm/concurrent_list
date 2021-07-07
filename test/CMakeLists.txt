@@ -1,7 +1,7 @@
 set(COMPILER_FLAGS -Wall -Werror -pedantic -fsanitize=address)
 set(LINKER_FLAGS -fsanitize=address)
 
-set(tests default_list_test consistent_list_test)
+set(tests default_list_test consistent_list_test atomic_list_test)
 foreach(test IN LISTS tests)
     add_executable(${test} "${test}.cpp")
     target_link_libraries(${test} PRIVATE acid_list gtest_main)
