@@ -76,13 +76,15 @@ public:
     }
     ~acid_list() {
         clear();
-        // write_lock wlock(rw_mutex);
         first->next = nullptr;
         last->prev = nullptr;
     }
 private:
     template <typename U>
     node_ptr insert(node_ptr pos, U&& value) {
+        while (pos->is_deleted) {
+            pos = pos->next;
+        }
         ++elements_count;
         node_ptr node(this, std::forward<U>(value));
         node->next = pos;
