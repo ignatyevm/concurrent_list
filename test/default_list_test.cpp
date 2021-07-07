@@ -38,12 +38,13 @@ TEST(ListTest, Insert) {
     values.push_back(1);
     for (int i = 0; i < n - 1; i++) {
         int v = int_generator::random_int();
-        auto it1 = random_element(list);
-        auto it2 = std::next(values.begin(), std::distance(list.begin(), it1));
+        int index = int_generator::random_int(0, (int) list.size() - 1);
+        auto it1 = std::next(list.begin(), index);
+        auto it2 = std::next(values.begin(), index);
         list.insert(it1, v);
         values.insert(it2, v);
-        check_content(values, list);
     }
+    check_content(values, list);
     EXPECT_EQ(list.size(), n);
 }
 
