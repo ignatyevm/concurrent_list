@@ -65,7 +65,6 @@ public:
         return owned_node != rhs.owned_node;
     }
     ~node_pointer() {
-        std::unique_lock<std::recursive_mutex> lock(list->node_mutex);
         release();
     }
     void acquire(node_type<List>* node) {
@@ -78,6 +77,7 @@ public:
         if (owned_node != nullptr) {
             owned_node->ref_count -= 1;
             if (owned_node->ref_count == 0) {
+                std::unique_lock<std::recursive_mutex> lock(list->node_mutex);
                 delete owned_node;
             }
             owned_node = nullptr;
