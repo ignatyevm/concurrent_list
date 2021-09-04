@@ -1,13 +1,18 @@
 #pragma once
 
-template <class List>
-class node_type;
+namespace polyndrom {
 
-template <class List>
-class node_pointer;
+namespace detail {
 
-template <typename List>
+template<class List>
+class consistent_node_ptr;
+
+} // detail
+
+template<typename List>
 class list_iterator;
 
-template <class T>
+template<class T>
 class acid_list;
+
+} // polyndrom
