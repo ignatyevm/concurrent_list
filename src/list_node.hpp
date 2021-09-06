@@ -2,10 +2,7 @@
 
 #include "fwd.hpp"
 
-#include <cstddef>
 #include <utility>
-#include <atomic>
-#include <mutex>
 
 namespace polyndrom::detail {
 
@@ -13,8 +10,6 @@ template<class List>
 class consistent_node_ptr {
 public:
     using list_type = List;
-    using write_lock = typename list_type::write_lock;
-    using read_lock = typename list_type::read_lock;
     using value_type = typename list_type::value_type;
 
     class consistent_node {
@@ -33,8 +28,8 @@ public:
         consistent_node_ptr<list_type> prev = nullptr;
         consistent_node_ptr<list_type> next = nullptr;
         value_type value;
-        std::atomic_size_t ref_count = 0;
-        std::atomic_bool is_deleted = false;
+        std::size_t ref_count = 0;
+        bool is_deleted = false;
     };
 
     consistent_node_ptr() = default;
@@ -98,7 +93,6 @@ private:
         if (owned_node != nullptr) {
             owned_node->ref_count -= 1;
             if (owned_node->ref_count == 0) {
-                std::unique_lock<std::recursive_mutex> lock(list->node_mutex);
                 delete owned_node;
             }
             owned_node = nullptr;

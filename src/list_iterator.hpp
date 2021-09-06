@@ -4,7 +4,6 @@
 #include "list_node.hpp"
 
 #include <iterator>
-#include <mutex>
 
 namespace polyndrom {
 
@@ -15,8 +14,6 @@ private:
 
     friend list_type;
 
-    using write_lock = typename list_type::write_lock;
-    using read_lock = typename list_type::read_lock;
     using node_ptr = typename list_type::node_ptr;
 public:
     using iterator_category = std::bidirectional_iterator_tag;
@@ -28,13 +25,11 @@ public:
     list_iterator() = default;
 
     list_iterator(const list_iterator& other) {
-        read_lock lock(other.list->rw_mutex);
         list = other.list;
         node = other.node;
     }
 
     list_iterator& operator=(const list_iterator& other) {
-        read_lock lock(other.list->rw_mutex);
         if (node == other.node) {
             return *this;
         }
@@ -44,17 +39,14 @@ public:
     }
 
     value_type& operator*() {
-        read_lock lock(list->rw_mutex);
         return node->value;
     }
 
     value_type* operator->() {
-        read_lock lock(list->rw_mutex);
         return &(node->value);
     }
 
     list_iterator& operator++() {
-        read_lock lock(list->rw_mutex);
         node = node->next;
         while (node->is_deleted) {
             node = node->next;
@@ -69,7 +61,6 @@ public:
     }
 
     list_iterator& operator--() {
-        read_lock lock(list->rw_mutex);
         node = node->prev;
         while (node->is_deleted) {
             node = node->prev;
@@ -84,12 +75,10 @@ public:
     }
 
     bool operator==(const list_iterator& rhs) const {
-        read_lock lock(list->rw_mutex);
         return node == rhs.node;
     }
 
     bool operator!=(const list_iterator& rhs) const {
-        read_lock lock(list->rw_mutex);
         return node != rhs.node;
     }
 
@@ -97,7 +86,6 @@ public:
 
 private:
     list_iterator(const list_type* list, node_ptr other_node) {
-        read_lock lock(list->rw_mutex);
         this->list = list;
         node = other_node;
     }
