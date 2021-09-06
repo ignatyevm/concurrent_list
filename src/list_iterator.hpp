@@ -21,7 +21,7 @@ private:
 public:
     using iterator_category = std::bidirectional_iterator_tag;
     using value_type = typename list_type::value_type;
-    using difference_type = size_t;
+    using difference_type = std::ptrdiff_t;
     using pointer = value_type*;
     using reference = value_type&;
 
@@ -83,12 +83,12 @@ public:
         return other;
     }
 
-    bool operator==(const list_iterator& rhs) {
+    bool operator==(const list_iterator& rhs) const {
         read_lock lock(list->rw_mutex);
         return node == rhs.node;
     }
 
-    bool operator!=(const list_iterator& rhs) {
+    bool operator!=(const list_iterator& rhs) const {
         read_lock lock(list->rw_mutex);
         return node != rhs.node;
     }
