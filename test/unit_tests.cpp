@@ -1,4 +1,5 @@
 #include "acid_list.hpp"
+#include "utils.hpp"
 
 #include "gtest/gtest.h"
 
@@ -7,18 +8,6 @@
 #include <random>
 
 using iterator = typename polyndrom::acid_list<int>::iterator;
-
-inline std::vector<int> random_int_vector(int n) {
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    std::uniform_int_distribution<int> d(std::numeric_limits<int>::min(),
-                                         std::numeric_limits<int>::max());
-    std::vector<int> values(n);
-    std::generate(values.begin(), values.end(), [&mt, &d] {
-        return d(mt);
-    });
-    return values;
-}
 
 TEST(ListTest, SimplePushBack) {
     polyndrom::acid_list<int> list;
@@ -63,7 +52,7 @@ TEST(ListTest, SimpleErase) {
 TEST(ListTest, PushBack) {
     int n = 10000;
     polyndrom::acid_list<int> list;
-    auto values = random_int_vector(n);
+    auto values = RandomIntVector(n);
     for (int v : values) {
         list.push_back(v);
     }
@@ -74,7 +63,7 @@ TEST(ListTest, PushBack) {
 TEST(ListTest, PushFront) {
     int n = 10000;
     polyndrom::acid_list<int> list;
-    auto values = random_int_vector(n);
+    auto values = RandomIntVector(n);
     for (int v : values) {
         list.push_front(v);
     }
@@ -116,7 +105,7 @@ TEST(ListTest, Erase) {
     std::mt19937 mt(rd());
     std::uniform_int_distribution<int> step_distribution(0, n);
 
-    auto values = random_int_vector(n);
+    auto values = RandomIntVector(n);
     polyndrom::acid_list<int> list;
     std::copy(values.begin(), values.end(), std::back_inserter(list));
 
@@ -133,7 +122,7 @@ TEST(ListTest, Erase) {
 TEST(ListTest, IteratorDirectAdvance) {
     int n = 10000;
     polyndrom::acid_list<int> list;
-    auto values = random_int_vector(n);
+    auto values = RandomIntVector(n);
     std::copy(values.begin(), values.end(), std::back_inserter(list));
     auto it1 = list.begin();
     for (auto it2 = values.begin(); it2 != values.end(); ++it2) {
@@ -145,7 +134,7 @@ TEST(ListTest, IteratorDirectAdvance) {
 TEST(ListTest, IteratorReverseAdvance) {
     int n = 10000;
     polyndrom::acid_list<int> list;
-    auto values = random_int_vector(n);
+    auto values = RandomIntVector(n);
     std::copy(values.begin(), values.end(), std::back_inserter(list));
     auto it1 = std::prev(list.end());
     for (auto it2 = values.rbegin(); it2 != values.rend(); ++it2) {
@@ -243,7 +232,7 @@ TEST(ConsistentListTest, InvalidateRandomDirect) {
     std::mt19937 mt(rd());
     std::uniform_int_distribution<int> index_distribution(0, n - 1);
 
-    auto values = random_int_vector(n);
+    auto values = RandomIntVector(n);
     std::vector<std::pair<int, bool>> values_history(n);
     std::transform(values.begin(), values.end(), values_history.begin(), [](int v) {
         return std::make_pair(v, false);
@@ -285,7 +274,7 @@ TEST(ConsistentListTest, InvalidateRandomReverse) {
     std::mt19937 mt(rd());
     std::uniform_int_distribution<int> index_distribution(0, n - 1);
 
-    auto values = random_int_vector(n);
+    auto values = RandomIntVector(n);
     std::vector<std::pair<int, bool>> values_history(n);
     std::transform(values.begin(), values.end(), values_history.begin(), [](int v) {
         return std::make_pair(v, false);
