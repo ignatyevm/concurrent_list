@@ -1,2 +1,4 @@
+.vscode/
 .idea/
-build/
+build-asan/
+build-tsan/
