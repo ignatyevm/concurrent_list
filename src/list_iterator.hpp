@@ -4,7 +4,6 @@
 #include "list_node.hpp"
 
 #include <iterator>
-#include <mutex>
 
 namespace polyndrom {
 
@@ -17,7 +16,7 @@ private:
 
     using write_lock = typename list_type::write_lock;
     using read_lock = typename list_type::read_lock;
-    using node_ptr = typename list_type::node_ptr;
+    using node_ptr = detail::consistent_node_ptr<List>;
 
 public:
     using iterator_category = std::bidirectional_iterator_tag;
@@ -28,37 +27,31 @@ public:
 
     list_iterator() = default;
 
-    list_iterator(const list_iterator& other) {
-        read_lock lock(other.list->rw_mutex);
-        list = other.list;
-        node = other.node;
+    list_iterator(const list_iterator& other) : node(other.node) {
     }
 
     list_iterator& operator=(const list_iterator& other) {
-        read_lock lock(other.list->rw_mutex);
         if (node == other.node) {
             return *this;
         }
-        list = other.list;
         node = other.node;
         return *this;
     }
 
     value_type& operator*() {
-        read_lock lock(list->rw_mutex);
+        read_lock lock(node->mutex);
         return node->value;
     }
 
     value_type* operator->() {
-        read_lock lock(list->rw_mutex);
+        read_lock lock(node->mutex);
         return &(node->value);
     }
 
     list_iterator& operator++() {
-        read_lock lock(list->rw_mutex);
-        node = node->next;
+        node = node.locked_read_next();
         while (node->is_deleted) {
-            node = node->next;
+            node = node.locked_read_next();
         }
         return *this;
     }
@@ -70,10 +63,9 @@ public:
     }
 
     list_iterator& operator--() {
-        read_lock lock(list->rw_mutex);
-        node = node->prev;
+        node = node.locked_read_prev();
         while (node->is_deleted) {
-            node = node->prev;
+            node = node.locked_read_prev();
         }
         return *this;
     }
@@ -85,26 +77,20 @@ public:
     }
 
     bool operator==(const list_iterator& rhs) const {
-        read_lock lock(list->rw_mutex);
         return node == rhs.node;
     }
 
     bool operator!=(const list_iterator& rhs) const {
-        read_lock lock(list->rw_mutex);
         return node != rhs.node;
     }
 
     ~list_iterator() = default;
 
 private:
-    list_iterator(const list_type* list, node_ptr other_node) {
-        read_lock lock(list->rw_mutex);
-        this->list = list;
-        node = other_node;
+    explicit list_iterator(node_ptr other_node) : node(other_node) {
     }
 
 private:
-    const list_type* list = nullptr;
     node_ptr node = nullptr;
 };
 

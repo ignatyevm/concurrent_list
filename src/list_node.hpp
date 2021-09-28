@@ -4,7 +4,8 @@
 
 #include <utility>
 #include <atomic>
-#include <mutex>
+#include <shared_mutex>
+#include <stack>
 
 namespace polyndrom::detail {
 
@@ -12,6 +13,9 @@ template<class List>
 class consistent_node_ptr {
 public:
     using list_type = List;
+
+    friend list_iterator<list_type>;
+
     using write_lock = typename list_type::write_lock;
     using read_lock = typename list_type::read_lock;
     using value_type = typename list_type::value_type;
@@ -34,35 +38,35 @@ public:
         value_type value;
         std::atomic_size_t ref_count = 0;
         std::atomic_bool is_deleted = false;
+        std::shared_mutex mutex;
     };
 
     consistent_node_ptr() = default;
 
-    template<typename T>
-    explicit consistent_node_ptr(list_type* list, T&& value) noexcept {
-        this->list = list;
-        acquire(new consistent_node(std::forward<T>(value)));
-        owned_node->next.list = list;
-        owned_node->prev.list = list;
+    consistent_node_ptr(const consistent_node_ptr& other) {
+        acquire(other.owned_node);
     }
 
-    consistent_node_ptr(const consistent_node_ptr& other) {
-        list = other.list;
-        acquire(other.owned_node);
+    explicit consistent_node_ptr(const value_type& value) {
+        acquire(new consistent_node(value));
+    }
+
+    explicit consistent_node_ptr(value_type&& value) {
+        acquire(new consistent_node(std::move(value)));
     }
 
     consistent_node_ptr& operator=(const consistent_node_ptr& other) {
         if (owned_node == other.owned_node) {
             return *this;
         }
-        list = other.list;
         consistent_node* new_node = other.owned_node;
         release();
         acquire(new_node);
         return *this;
     }
 
-    consistent_node_ptr(std::nullptr_t) {}
+    consistent_node_ptr(std::nullptr_t) {
+    }
 
     consistent_node_ptr& operator=(std::nullptr_t) {
         release();
@@ -81,6 +85,21 @@ public:
         return owned_node != rhs.owned_node;
     }
 
+    consistent_node_ptr locked_read_next() const {
+        read_lock lock(owned_node->mutex);
+        return owned_node->next;
+    }
+
+    consistent_node_ptr locked_read_prev() const {
+        read_lock lock(owned_node->mutex);
+        return owned_node->prev;
+    }
+
+    std::pair<consistent_node_ptr, consistent_node_ptr> locked_read_nodes() const {
+        read_lock lock(owned_node->mutex);
+        return {owned_node->prev, owned_node->next};
+    }
+
     ~consistent_node_ptr() {
         release();
     }
@@ -95,17 +114,37 @@ private:
 
     void release() {
         if (owned_node != nullptr) {
-            owned_node->ref_count -= 1;
-            if (owned_node->ref_count == 0) {
-                delete owned_node;
+            if (owned_node->ref_count-- == 1) {
+                // std::stack<consistent_node*> nodes_stack;
+                nodes_stack.push(owned_node);
+                while (!nodes_stack.empty()) {
+                    consistent_node* node = nodes_stack.top();
+                    nodes_stack.pop();
+                    consistent_node* prev = node->prev.owned_node;
+                    consistent_node* next = node->next.owned_node;
+                    if (prev != nullptr && prev->ref_count-- == 1) {
+                        nodes_stack.push(prev);
+                    }
+                    if (next != nullptr && next->ref_count-- == 1) {
+                        nodes_stack.push(next);
+                    }
+                    node->prev.owned_node = nullptr;
+                    node->next.owned_node = nullptr;
+                    delete node;
+                }
             }
             owned_node = nullptr;
         }
     }
 
 private:
-    list_type* list = nullptr;
+    static thread_local std::stack<consistent_node*> nodes_stack;
     consistent_node* owned_node = nullptr;
 };
 
+} // polyndrom::detail
+
+namespace polyndrom::detail {
+    template <class List>
+    thread_local std::stack<typename consistent_node_ptr<List>::consistent_node*> consistent_node_ptr<List>::nodes_stack{};
 } // polyndrom::detail
