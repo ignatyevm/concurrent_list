@@ -19,15 +19,6 @@ std::vector<int> RandomIntVector(int n) {
     return values;
 }
 
-std::vector<int> RandomUniqueIntVector(int n) {
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    std::vector<int> values(n);
-    std::iota(values.begin(), values.end(), 0);
-    std::shuffle(values.begin(), values.end(), mt);
-    return values;
-}
-
 WorkerPool::WorkerPool(size_t pool_size) : pool_size_(pool_size) {
     pool_.reserve(pool_size);
     workers_.reserve(pool_size);

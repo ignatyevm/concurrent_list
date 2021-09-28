@@ -28,58 +28,71 @@ private:
 template <class IntContainer>
 std::map<int, int> CountUniqueValues(const IntContainer& container) {
     std::map<int, int> result;
-    for (int value: container) {
+    for (auto value: container) {
         ++result[value];
     }
     return result;
 }
 
-template <class Container>
-auto NextCircularIt(const Container& container, int step) {
-    auto it = container.begin();
-    for (int i = 0; i < step; i++) {
-        if (it == container.end()) {
-            it = container.begin();
+template <class Container, class FwdIt>
+auto NextCircularIt(const Container& container, int step, FwdIt prev_it) {
+    auto it = prev_it;
+    int step_abs = step > 0 ? step : -step;
+    for (int i = 0; i < step_abs; i++) {
+        if (container.size() == 0) {
+            continue;
         }
-        ++it;
+        if (step > 0) {
+            if (it == container.end()) {
+                it = container.begin();
+            }
+            ++it;
+        } else {
+            if (it == container.begin()) {
+                it = container.end();
+            }
+            --it;
+        }
     }
     return it;
 }
 
-template <class Container>
-auto RandomIterator(const Container& container) {
+template <class Container, class FwdIt>
+auto RandomIterator(const Container& container, FwdIt prev_it) {
     static thread_local std::mt19937 engine(std::random_device{}());
-    static thread_local std::uniform_int_distribution<int> dist(0, container.size());
-    return NextCircularIt(container, dist(engine));
+    static thread_local std::uniform_int_distribution dist(-100, 100);
+    return NextCircularIt(container, dist(engine), prev_it);
 }
 
 template <class Container>
-auto RandomIteratorsVector(const Container& container, int n) {
+auto MakeIteratorsVector(const Container& container, int n) {
     assert(n <= container.size());
     std::vector<typename Container::iterator> its;
     its.reserve(container.size());
     for (auto it = container.begin(); it != container.end(); it++) {
         its.push_back(it);
     }
+    return its;
+}
+
+template <class Container>
+auto MakeRandomIteratorsVector(const Container& container, int n) {
+    assert(n <= container.size());
+    std::vector<typename Container::iterator> its = MakeIteratorsVector(container, n);
     std::mt19937 engine(std::random_device{}());
     std::shuffle(its.begin(), its.end(), engine);
     its.resize(n);
     return its;
 }
 
-template <class Data, class F>
-auto SplitTaskToWorkers(const Data& data, int workers_count, const F& task) {
-    std::vector<std::function<void()>> workers;
-    workers.reserve(workers_count);
-    int size_per_worker = static_cast<int>(data.size()) / workers_count;
-    for (int i = 0; i < workers_count; i++) {
-        auto first = data.begin() + size_per_worker * i;
-        auto last = i == workers_count - 1 ? data.end() : first + size_per_worker;
-        workers.push_back([&task, first, last] () {
-            for (auto it = first; it != last; it++) {
-                task(*it);
-            }
-        });
-    }
-    return workers;
+template <class Container>
+bool IsContainsUnique(const Container& container) {
+    using ValueType = typename Container::value_type;
+    std::map<ValueType, size_t> counts;
+    std::for_each(container.begin(), container.end(), [&counts](const ValueType& value) {
+        ++counts[value];
+    });
+    return std::all_of(counts.begin(), counts.end(), [](const std::pair<ValueType, size_t> value_count) {
+        return value_count.second == 1;
+    });
 }
