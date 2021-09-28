@@ -188,8 +188,29 @@ TEST(ConsistentListTest, SimpleInvalidate3) {
     EXPECT_EQ(*it2, 3);
 }
 
+TEST(ConsistentListTest, StackOverflowWhenRelease) {
+    using value_type = std::tuple<int64_t, int64_t, int64_t, int64_t,
+                                  int64_t, int64_t, int64_t, int64_t>;
+    value_type value = {0, 0, 0, 0, 0, 0, 0, 0};
+    int n = 200000;
+    polyndrom::acid_list<value_type> list;
+    for (int i = 0; i < n; i++) {
+        list.push_back(value);
+    }
+    auto it = std::next(list.begin(), n / 2);
+    {
+        auto it = list.begin();
+        auto end = list.end();
+        while (it != end) {
+            list.erase(it);
+            ++it;
+        }
+    }
+    std::destroy_at(&it);
+}
+
 TEST(ConsistentListTest, InvalidateAllDirect) {
-    int n = 10000;
+    int n = 5000;
     polyndrom::acid_list<int> list;
     std::fill_n(std::back_inserter(list), n, 0);
     std::iota(list.begin(), list.end(), 0);
