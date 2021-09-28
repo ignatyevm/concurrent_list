@@ -1,8 +1,4 @@
-
-set(CMAKE_CXX_STANDARD 17)
-
 set(COMPILER_FLAGS -Wall -pedantic)
-set(LINKER_FLAGS)
 
 add_library(utils STATIC utils.cpp)
 
