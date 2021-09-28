@@ -26,64 +26,46 @@ public:
     using value_type = T;
     using iterator = list_iterator<self_type>;
 
-    acid_list() : rw_mutex(), first(this, T()), last(this, T()) {
+    acid_list() : first(T()), last(T()) {
         first->next = last;
         last->prev = first;
     }
 
     template<typename U>
     void push_back(U&& value) {
-        write_lock lock(rw_mutex);
         insert(last, std::forward<U>(value));
     }
 
     template<typename U>
     void push_front(U&& value) {
-        write_lock lock(rw_mutex);
-        insert(first->next, std::forward<U>(value));
+        insert(first.locked_read_next(), std::forward<U>(value));
     }
 
     template<typename U>
     iterator insert(iterator pos, U&& value) {
-        write_lock lock(rw_mutex);
         node_ptr node = insert(pos.node, std::forward<U>(value));
-        lock.unlock();
-        return iterator(this, node);
+        return iterator(node);
     }
 
     iterator erase(iterator pos) {
-        iterator next(pos);
-        ++next;
-        write_lock lock(rw_mutex);
-        erase(pos.node);
-        lock.unlock();
-        return next;
+        node_ptr node = erase_node(pos.node);
+        return iterator(node);
     }
 
     iterator begin() const {
-        read_lock lock(rw_mutex);
-        node_ptr begin_node = first->next;
-        return iterator(this, begin_node);
+        return iterator(first.locked_read_next());
     }
 
     iterator end() const {
-        read_lock lock(rw_mutex);
-        node_ptr last_node = last;
-        return iterator(this, last_node);
+        return iterator(last);
     }
 
-    size_t size() const {
-        read_lock lock(rw_mutex);
+    int size() const {
         return elements_count;
     }
 
     void clear() {
-        write_lock lock(rw_mutex);
-        node_ptr node = first->next;
-        while (node != last) {
-            erase(node);
-            node = node->next;
-        }
+        for (auto it = begin(); it != end(); it = erase(it));
     }
 
     ~acid_list() {
@@ -94,34 +76,60 @@ public:
 
 private:
     template<typename U>
-    node_ptr insert(node_ptr pos, U&& value) {
-        while (pos->is_deleted) {
-            pos = pos->next;
+    node_ptr insert(node_ptr node, U&& value) {
+        node_ptr new_node(std::forward<U>(value));
+        while (true) {
+            while (node->is_deleted) {
+                node = node.locked_read_next();
+            }
+
+            node_ptr prev = node.locked_read_prev();
+
+            write_lock prev_lock(prev->mutex);
+            write_lock current_lock(node->mutex);
+
+            if (node->is_deleted || node->prev != prev) {
+                continue;
+            }
+
+            new_node->prev = prev;
+            new_node->next = node;
+            prev->next = new_node;
+            node->prev = new_node;
+            ++elements_count;
+            return new_node;
         }
-        ++elements_count;
-        node_ptr node(this, std::forward<U>(value));
-        node->next = pos;
-        node->prev = pos->prev;
-        pos->prev->next = node;
-        pos->prev = node;
-        return node;
     }
 
-    void erase(node_ptr pos) {
-        if (pos->is_deleted) {
-            return;
+    node_ptr erase_node(node_ptr node) {
+        while (!node->is_deleted) {
+            auto [prev, next] = node.locked_read_nodes();
+
+            write_lock prev_lock(prev->mutex);
+            read_lock current_lock(node->mutex);
+            write_lock next_lock(next->mutex);
+
+            if (node->is_deleted) {
+                return last;
+            }
+
+            if (node->prev != prev || node->next != next) {
+                continue;
+            }
+
+            node->is_deleted = true;
+            next->prev = prev;
+            prev->next = next;
+            --elements_count;
+            return next;
         }
-        --elements_count;
-        pos->is_deleted = true;
-        pos->next->prev = pos->prev;
-        pos->prev->next = pos->next;
+        return last;
     }
 
 private:
-    mutable std::shared_mutex rw_mutex;
     node_ptr first;
     node_ptr last;
-    size_t elements_count = 0;
+    std::atomic_int elements_count = 0;
 };
 
 } // polyndrom
