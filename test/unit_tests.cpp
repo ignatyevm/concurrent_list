@@ -188,6 +188,32 @@ TEST(ConsistentListTest, SimpleInvalidate3) {
     EXPECT_EQ(*it2, 3);
 }
 
+TEST(ConsistentListTest, InsertIntoDeleted) {
+    polyndrom::acid_list<int64_t> list;
+    list.push_back(1);
+    auto it = list.begin();
+    list.erase(it);
+    EXPECT_EQ(*it, 1);
+    EXPECT_EQ(list.size(), 0);
+    auto other_it = list.insert(it, 2);
+    EXPECT_EQ(*other_it, 2);
+    EXPECT_EQ(*list.begin(), 2);
+    EXPECT_EQ(list.size(), 1);
+}
+
+TEST(ConsistentListTest, EraseDeleted) {
+    polyndrom::acid_list<int64_t> list;
+    list.push_back(1);
+    list.push_back(2);
+    list.push_back(3);
+    auto it = std::next(list.begin());
+    list.erase(it);
+    EXPECT_EQ(*it, 2);
+    EXPECT_EQ(*std::prev(it), 1);
+    EXPECT_EQ(*std::next(it), 3);
+    EXPECT_EQ(list.size(), 2);
+}
+
 TEST(ConsistentListTest, StackOverflowWhenRelease) {
     using value_type = std::tuple<int64_t, int64_t, int64_t, int64_t,
                                   int64_t, int64_t, int64_t, int64_t>;
